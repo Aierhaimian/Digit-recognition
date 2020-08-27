@@ -31,6 +31,9 @@ def readfile(path):
         # words[0]是图片地址，words[1]是该图片的label
         img_lines.append((words[0], int(words[1])))
 
+        return img_lines
+
+'''
     x = np.zeros((len(img_lines), 28, 28, 1), dtype=np.uint8)
     y = np.zeros((len(img_lines)), dtype=np.uint8)
 
@@ -40,43 +43,52 @@ def readfile(path):
         y[i] = img_line[1]
 
         return x, y
+'''
 
 
 def read_dataset(workspace_dir):
     # 分别将train set, validation set, testing set用readfile函数读进来
     print("Reading data... ...")
-    train_xx, train_yy = readfile(os.path.join(workspace_dir, "train.txt"))
-    print("Size of training data = {}".format(len(train_xx)))
-    val_xx, val_yy = readfile(os.path.join(workspace_dir, "valid.txt"))
-    print("Size of validation data = {}".format(len(val_xx)))
-    test_xx, test_yy = readfile(os.path.join(workspace_dir, "test.txt"))
-    print("Size of testing data = {}".format(len(test_xx)))
+    # train_xx, train_yy = readfile(os.path.join(workspace_dir, "train.txt"))
+    train_lines = readfile(os.path.join(workspace_dir, "train.txt"))
+    print("Size of training data = {}".format(len(train_lines)))
+    # val_xx, val_yy = readfile(os.path.join(workspace_dir, "valid.txt"))
+    val_lines = readfile(os.path.join(workspace_dir, "valid.txt"))
+    print("Size of validation data = {}".format(len(val_lines)))
+    # test_xx, test_yy = readfile(os.path.join(workspace_dir, "test.txt"))
+    test_lines = readfile(os.path.join(workspace_dir, "test.txt"))
+    print("Size of testing data = {}".format(len(test_lines)))
 
-    return train_xx, train_yy, val_xx, val_yy, test_xx, test_yy
+    # return train_xx, train_yy, val_xx, val_yy, test_xx, test_yy
+    return train_lines, val_lines, test_lines
 
 
 class DigitDataset(Dataset):
-    def __init__(self, x, y, transform=None):
-        self.x = x
-        self.y = torch.LongTensor(y)
+    def __init__(self, lines, transform=None):
+        super(DigitDataset, self).__init__()
+        self.lines = lines
         self.transform = transform
 
     def __len__(self):
-        return len(self.x)
+        # return len(self.x)
+        return len(self.lines)
 
     def __getitem__(self, index):
-        X = self.x[index]
+        fn, label = self.lines[index]
+        img = Image.open(fn).convert('L')
+        # X = self.x[index]
         if self.transform is not None:
-            X = self.transform(X)
-        Y = self.y[index]
+            # X = self.transform(X)
+            img = self.transform(img)
+        # Y = self.y[index]
 
-        return X, Y
+        # return X, Y
+        return img, label
 
 
 def go_transform():
     train_transforms = transforms.Compose(
         [
-            transforms.ToPILImage(),
             transforms.RandomResizedCrop((28, 28)),
             transforms.ToTensor()
         ]
@@ -84,7 +96,6 @@ def go_transform():
 
     test_transforms = transforms.Compose(
         [
-            transforms.ToPILImage(),
             transforms.RandomResizedCrop((28, 28)),
             transforms.ToTensor()
         ]
@@ -181,18 +192,19 @@ if __name__ == "__main__":
     learning_rate = 0.001
     epochs = 30
     batch_size = 128
-    train_x, train_y, val_x, val_y, test_x, test_y = read_dataset("/home/dzx/workSpace/Digit-recognition")
+    # train_x, train_y, val_x, val_y, test_x, test_y = read_dataset("/home/dzx/workSpace/Digit-recognition")
+    train_lines, val_lines, test_lines = read_dataset("/home/dzx/workSpace/Digit-recognition")
 
     train_transform, test_transform = go_transform()
 
-    train_set = DigitDataset(train_x, train_y, train_transform)
-    val_set = DigitDataset(val_x, val_y, test_transform)
+    train_set = DigitDataset(train_lines, train_transform)
+    val_set = DigitDataset(val_lines, test_transform)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
 
     model = training(learning_rate, epochs)
 
-    test_set = DigitDataset(test_x, test_y, test_transform)
+    test_set = DigitDataset(test_lines, test_transform)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
     predict = testing(model)
